@@ -8,6 +8,7 @@ Priority: optional
 Maintainer: Debian GNOME Maintainers <pkg-gnome-maintainers@lists.alioth.debian.org>
 Uploaders: Jeremy Bicha <jbicha@debian.org>
 Build-Depends: debhelper-compat (= 12),
+               gir1.2-umockdev-1.0,
                gnome-pkg-tools,
                gtk-doc-tools,
                libglib2.0-dev,
@@ -15,6 +16,8 @@ Build-Depends: debhelper-compat (= 12),
                libudev-dev,
                meson (>= 0.50),
                pkg-config (>= 0.22),
+               python3-dbus,
+               python3-dbusmock,
                udev,
 Standards-Version: 4.3.0
 Vcs-Browser: https://salsa.debian.org/gnome-team/switcheroo-control

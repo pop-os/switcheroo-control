@@ -1,9 +1,9 @@
-switcheroo-control (2.4-1) UNRELEASED; urgency=medium
+switcheroo-control (2.4-1) unstable; urgency=medium
 
   * New upstream version
   * Updated for the new upstream build requirements
 
- -- Sebastien Bacher <seb128@ubuntu.com>  Fri, 26 Feb 2021 16:15:28 +0100
+ -- Sebastien Bacher <seb128@ubuntu.com>  Fri, 26 Feb 2021 16:17:31 +0100
 
 switcheroo-control (2.1-1) unstable; urgency=medium
 

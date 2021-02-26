@@ -14,11 +14,13 @@ typedef struct {
 } pci_id;
 
 /* Intel drivers */
-#define CHIPSET(x, y, z) { 0x8086, x, z },
+#define CHIPSET(w, x, y, z) { 0x8086, w, z },
 pci_id i965_pci_ids[] = {
 #include "/home/hadess/Projects/jhbuild/mesa/include/pci_ids/i965_pci_ids.h"
 	{ },
 };
+#undef CHIPSET
+#define CHIPSET(x, y, z) { 0x8086, x, z },
 pci_id i915_pci_ids[] = {
 #include "/home/hadess/Projects/jhbuild/mesa/include/pci_ids/i915_pci_ids.h"
 	{},
@@ -33,7 +35,7 @@ print_table (pci_id *table)
 		const char *name;
 
 		name = table[i].name;
-		g_print ("pci:v%08xd%08x*\n", table[i].vid, table[i].pid);
+		g_print ("pci:v%08Xd%08X*\n", table[i].vid, table[i].pid);
 
 		/* Quirk */
 		if (g_str_equal ("Mobile Intel® GM45 Express Chipset", name))

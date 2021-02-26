@@ -3,7 +3,7 @@
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 3 as published by
- * the Free Software Foundation.
+ * the Free Software Foundation, or (at your option) any later version.
  *
  */
 
@@ -42,6 +42,7 @@ typedef struct {
 
 	/* Detection */
 	GUdevClient *client;
+	gboolean add_fake_cards;
 	guint num_gpus;
 	GPtrArray *cards; /* array of CardData */
 } ControlData;
@@ -201,9 +202,11 @@ name_acquired_handler (GDBusConnection *connection,
 }
 
 static gboolean
-setup_dbus (ControlData *data)
+setup_dbus (ControlData *data,
+	    gboolean     replace)
 {
 	GBytes *bytes;
+	GBusNameOwnerFlags flags;
 
 	bytes = g_resources_lookup_data ("/net/hadess/SwitcherooControl/net.hadess.SwitcherooControl.xml",
 					 G_RESOURCE_LOOKUP_FLAGS_NONE,
@@ -212,9 +215,13 @@ setup_dbus (ControlData *data)
 	g_bytes_unref (bytes);
 	g_assert (data->introspection_data != NULL);
 
+	flags = G_BUS_NAME_OWNER_FLAGS_ALLOW_REPLACEMENT;
+	if (replace)
+		flags |= G_BUS_NAME_OWNER_FLAGS_REPLACE;
+
 	data->name_id = g_bus_own_name (G_BUS_TYPE_SYSTEM,
 					CONTROL_PROXY_DBUS_NAME,
-					G_BUS_NAME_OWNER_FLAGS_NONE,
+					flags,
 					bus_acquired_handler,
 					name_acquired_handler,
 					name_lost_handler,
@@ -222,39 +229,6 @@ setup_dbus (ControlData *data)
 					NULL);
 
 	return TRUE;
-}
-
-static char *
-get_card_id_path (GUdevClient *client,
-		  GUdevDevice *dev,
-		  GUdevDevice *parent)
-{
-	GList *devices, *l;
-	char *ret = NULL;
-
-	/* Metadata from the sibling "card" device */
-	devices = g_udev_client_query_by_subsystem (client, "drm");
-	for (l = devices; l != NULL; l = l->next) {
-		GUdevDevice *d = l->data;
-		g_autoptr(GUdevDevice) p = NULL;
-		const char *path;
-
-		p = g_udev_device_get_parent (d);
-		if (g_strcmp0 (g_udev_device_get_sysfs_path (p),
-			       g_udev_device_get_sysfs_path (parent)) != 0) {
-			continue;
-		}
-
-		path = g_udev_device_get_device_file (d);
-		if (path != NULL &&
-		    g_str_has_prefix (path, "/dev/dri/card")) {
-			ret = g_strdup (g_udev_device_get_property (d, "ID_PATH_TAG"));
-			break;
-		}
-	}
-	g_list_free_full (devices, (GDestroyNotify) g_object_unref);
-
-	return ret;
 }
 
 static GPtrArray *
@@ -281,9 +255,16 @@ get_card_env (GUdevClient *client,
 
 		/* See the Mesa loader code:
 		 * https://gitlab.freedesktop.org/mesa/mesa/blob/master/src/loader/loader.c#L322 */
-		id = get_card_id_path (client, dev, parent);
-		g_ptr_array_add (array, g_strdup ("DRI_PRIME"));
-		g_ptr_array_add (array, id);
+		id = g_strdup (g_udev_device_get_property (dev, "ID_PATH_TAG"));
+		if (id != NULL) {
+			g_ptr_array_add (array, g_strdup ("DRI_PRIME"));
+			g_ptr_array_add (array, id);
+		}
+	}
+
+	if (array->len == 0) {
+		g_ptr_array_free (array, TRUE);
+		return NULL;
 	}
 
 	return array;
@@ -332,14 +313,58 @@ get_card_data (GUdevClient *client,
 	       GUdevDevice *d)
 {
 	CardData *data;
+	GPtrArray *env;
+
+	env = get_card_env (client, d);
+	if (!env)
+		return NULL;
 
 	data = g_new0 (CardData, 1);
 	data->dev = g_object_ref (d);
 	data->name = get_card_name (d);
-	data->env = get_card_env (client, d);
+	data->env = env;
 	data->is_default = get_card_is_default (d);
 
 	return data;
+}
+
+static void
+add_fake_intel_card (GPtrArray *cards)
+{
+	CardData *card;
+	const char *env[] = {
+		"INTEL_AGP_OFFLOADING", "1",
+		"INTEL_PCI_MODE", "false",
+		NULL
+	};
+	guint i;
+
+	card = g_new0 (CardData, 1);
+	card->name = "Intel i740 “Auburn”";
+	card->env = g_ptr_array_new ();
+	for (i = 0; env[i] != NULL; i++)
+		g_ptr_array_add (card->env, g_strdup (env[i]));
+
+	g_ptr_array_add (cards, card);
+}
+
+static void
+add_fake_trident_card (GPtrArray *cards)
+{
+	CardData *card;
+	const char *env[] = {
+		"TRIDENT_OFFLOADING", "1",
+		NULL
+	};
+	guint i;
+
+	card = g_new0 (CardData, 1);
+	card->name = "Trident Vesa Local Bus 512KB";
+	card->env = g_ptr_array_new ();
+	for (i = 0; env[i] != NULL; i++)
+		g_ptr_array_add (card->env, g_strdup (env[i]));
+
+	g_ptr_array_add (cards, card);
 }
 
 static GPtrArray *
@@ -349,6 +374,10 @@ get_drm_cards (ControlData *data)
 	GPtrArray *cards;
 
 	cards = g_ptr_array_new_with_free_func ((GDestroyNotify) free_card_data);
+
+	if (data->add_fake_cards)
+		add_fake_intel_card (cards);
+
 	devices = g_udev_client_query_by_subsystem (data->client, "drm");
 	for (l = devices; l != NULL; l = l->next) {
 		GUdevDevice *d = l->data;
@@ -359,30 +388,15 @@ get_drm_cards (ControlData *data)
 		    g_str_has_prefix (path, "/dev/dri/render")) {
 			CardData *card;
 			card = get_card_data (data->client, d);
-			g_ptr_array_add (cards, card);
+			if (card)
+				g_ptr_array_add (cards, card);
 		}
 		g_object_unref (d);
 	}
 	g_list_free (devices);
 
-#if 0
-	{
-		CardData *card;
-		const char *env[] = {
-			"TRIDENT_OFFLOADING", "1",
-			NULL
-		};
-		guint i;
-
-		card = g_new0 (CardData, 1);
-		card->name = "Trident Vesa Local Bus 512KB";
-		card->env = g_ptr_array_new ();
-		for (i = 0; env[i] != NULL; i++)
-			g_ptr_array_add (card->env, g_strdup (env[i]));
-
-		g_ptr_array_add (cards, card);
-	}
-#endif
+	if (data->add_fake_cards)
+		add_fake_trident_card (cards);
 
 	return cards;
 }
@@ -427,15 +441,37 @@ get_num_gpus (ControlData *data)
 int main (int argc, char **argv)
 {
 	ControlData *data;
+	g_autoptr(GOptionContext) option_context = NULL;
+	g_autoptr(GError) error = NULL;
+	gboolean verbose = FALSE;
+	gboolean add_fake_cards = FALSE;
+	gboolean replace = FALSE;
+	gboolean ret;
+	const GOptionEntry options[] = {
+		{ "verbose", 'v', 0, G_OPTION_ARG_NONE, &verbose, "Show extra debugging information", NULL },
+		{ "fake", 'f', 0, G_OPTION_ARG_NONE, &add_fake_cards, "Add fake GPUs to the output", NULL },
+		{ "replace", 'r', 0, G_OPTION_ARG_NONE, &replace, "Replace the running instance of switcheroo-control", NULL },
+		{ NULL}
+	};
 
 	setlocale (LC_ALL, "");
+	option_context = g_option_context_new ("");
+	g_option_context_add_main_entries (option_context, options, NULL);
 
-	/* g_setenv ("G_MESSAGES_DEBUG", "all", TRUE); */
+	ret = g_option_context_parse (option_context, &argc, &argv, &error);
+	if (!ret) {
+		g_print ("Failed to parse arguments: %s\n", error->message);
+		return EXIT_FAILURE;
+	}
+
+	if (verbose)
+		g_setenv ("G_MESSAGES_DEBUG", "all", TRUE);
 
 	data = g_new0 (ControlData, 1);
+	data->add_fake_cards = add_fake_cards;
 
 	get_num_gpus (data);
-	setup_dbus (data);
+	setup_dbus (data, replace);
 	data->init_done = TRUE;
 	if (data->connection)
 		send_dbus_event (data);

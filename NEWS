@@ -1,3 +1,23 @@
+2.4
+---
+
+This release fixes the cleaned-up name of some video cards not being picked
+up, as well as adding a test suite.
+
+2.3
+---
+
+This release fixes the path to the interpreter for the switcherooctl
+tool added in 2.2.
+
+2.2
+---
+
+This release adds a command-line utility to launch specific commands on
+a specific GPU, or the first discrete one. See the reference documentation
+or the switcherooctl(1) man page for details. The build system was also
+ported to meson.
+
 2.1
 ---
 

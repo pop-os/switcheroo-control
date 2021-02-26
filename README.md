@@ -8,10 +8,9 @@ developer information.
 
 Installation
 ------------
-```
-./configure --prefix=/usr --sysconfdir=/etc
-make
-make install
+```sh
+$ meson _build -Dprefix=/usr
+$ ninja -v -C _build install
 ```
 It requires libgudev and systemd.
 
@@ -36,6 +35,9 @@ menu item appears in docked application's contextual menu.
 You can use it to launch the [GLArea example application](https://github.com/ebassi/glarea-example/)
 to verify that the right video card/GPU is used when launching the application
 normally, and through “Launch using Dedicated Graphics Card”.
+
+Or run `make -C tests/app install` to install a test application that uses
+the `PrefersNonDefaultGPU` `.desktop` property.
 
 Tested on
 ---------

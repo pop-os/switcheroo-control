@@ -1,6 +1,7 @@
 switcheroo-control (2.4-1) UNRELEASED; urgency=medium
 
   * New upstream version
+  * Updated for the new upstream build requirements
 
  -- Sebastien Bacher <seb128@ubuntu.com>  Fri, 26 Feb 2021 16:15:28 +0100
 

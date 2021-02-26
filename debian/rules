@@ -6,14 +6,11 @@ export DEB_LDFLAGS_MAINT_APPEND = -Wl,-O1 -Wl,-z,defs -Wl,--as-needed
 %:
 	dh $@ --with gnome
 
-override_dh_autoreconf:
-	dh_autoreconf --as-needed
-
 override_dh_auto_configure:
 	dh_auto_configure -- \
-		--disable-gtk-doc \
-		--with-systemdsystemunitdir=/lib/systemd/system \
-		--with-hwdbdir=/lib/udev/hwdb.d
+		-Dgtk_doc=false \
+		-Dsystemdsystemunitdir=/lib/systemd/system \
+		-Dhwdbdir=/lib/udev/hwdb.d
 
 override_dh_install:
 	# The developer documentation isn't very useful

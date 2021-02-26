@@ -66,6 +66,11 @@
     <xi:include href="docs-net.hadess.SwitcherooControl.xml"/>
   </reference>
 
+  <chapter id="tools">
+      <title>Tools</title>
+      <xi:include href="switcherooctl.xml"/>
+  </chapter>
+
   <index>
     <title>Index</title>
   </index>

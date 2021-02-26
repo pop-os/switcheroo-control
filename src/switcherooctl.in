@@ -1,0 +1,182 @@
+#!@PYTHON3@
+
+from gi.repository import Gio, GLib
+import sys, os
+
+VERSION = '@VERSION@'
+
+def usage_main():
+    print('Usage:')
+    print('  switcherooctl COMMAND [ARGS…]')
+    print('')
+    print('Commands:')
+    print('  help     Print help')
+    print('  version  Print version')
+    print('  list     List the known GPUs')
+    print('  launch   Launch a command on a specific GPU')
+    print('')
+    print('Use “switcherooctl help COMMAND” to get detailed help.')
+
+def usage_version():
+    print('Usage:')
+    print('  switcherooctl version')
+    print('')
+    print('Print version information and exit.')
+
+def usage_list():
+    print('Usage:')
+    print('  switcherooctl list')
+    print('')
+    print('List the known GPUs.')
+
+def usage_launch():
+    print('Usage:')
+    print('  switcherooctl launch [COMMAND…]')
+    print('')
+    print('Launch a command on a specific GPU.')
+    print('')
+    print('Options:')
+    print('  -g, --gpu=GPU-ID                The GPU to launch on')
+    print('')
+    print('The default GPU to launch on will be the first discrete GPU, or the')
+    print('default GPU if there’s only one. Identifiers can be found using the')
+    print('list command.')
+
+def usage(command=None):
+    if not command:
+        usage_main()
+    elif command == 'list':
+        usage_list()
+    elif command == 'launch':
+        usage_launch()
+    elif command == 'version':
+        usage_version()
+    else:
+        usage_main()
+
+def version():
+    print (VERSION)
+
+def launch(args, gpu):
+    if gpu:
+        # print (gpu['Environment'])
+        for k,v in zip(gpu['Environment'][0::2], gpu['Environment'][1::2]):
+            os.environ[k] = v
+            # print ('%s = %s' % (k, v))
+    os.execvp(args[0], args)
+
+def env_to_str(env):
+    s = ''
+    for k,v in zip(env[0::2], env[1::2]):
+        s += str('%s=%s ' % (k, v))
+    return s.rstrip()
+
+def print_gpu(gpu, index):
+    if index > 0:
+        print('')
+    print('Device:', index)
+    print('  Name:       ', gpu['Name'])
+    print('  Default:    ', "yes" if gpu['Default'] else "no")
+    print('  Environment:', env_to_str(gpu['Environment']))
+
+def _list():
+    try:
+        gpus = get_gpus()
+    except:
+        # print("Couldn\'t get GPUs: ", sys.exc_info()[0])
+        return
+
+    index = 0
+    for gpu in gpus:
+        print_gpu(gpu, index)
+        index += 1
+
+def get_gpus():
+    try:
+        bus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
+        proxy = Gio.DBusProxy.new_sync(bus, Gio.DBusProxyFlags.NONE, None,
+                                       'net.hadess.SwitcherooControl',
+                                       '/net/hadess/SwitcherooControl',
+                                       'org.freedesktop.DBus.Properties', None)
+    except:
+        raise SystemError
+
+    gpus = None
+    try:
+        gpus = proxy.Get('(ss)', 'net.hadess.SwitcherooControl', 'GPUs')
+    except:
+        raise ReferenceError
+    else:
+        # Move the first GPU to the front, it's the default
+        default_gpu = next(gpu for gpu in gpus if gpu['Default'])
+        gpus.remove(default_gpu)
+        gpus.insert(0, default_gpu)
+        return gpus
+
+def get_discrete_gpu():
+    try:
+        gpus = get_gpus()
+    except:
+        # print("Couldn\'t get GPUs: ", sys.exc_info()[0])
+        return None
+
+    try:
+        gpu = next(gpu for gpu in gpus if not gpu['Default'])
+    except StopIteration:
+        return None
+    else:
+        return gpu
+
+def get_gpu(index):
+    try:
+        gpus = get_gpus()
+    except:
+        # print("Couldn\'t get GPUs: ", sys.exc_info()[0])
+        return None
+
+    try:
+        gpu = gpus[index]
+    except:
+        return None
+    else:
+        return gpu
+
+args = None
+if len(sys.argv) == 1:
+    command = 'list'
+elif len(sys.argv) >= 2:
+    command = sys.argv[1]
+    if command == '--help':
+        command = 'help'
+    if command == '--version':
+        command = 'version'
+    if command != 'help' and command != 'launch' and command != 'list' and command != 'version':
+        command = 'launch'
+        args = sys.argv[1:]
+    else:
+        args = sys.argv[2:]
+
+if command == 'help':
+    if len(args) > 0:
+        usage(args[0])
+    else:
+        usage(None)
+elif command == 'version':
+    version()
+elif command == 'launch':
+    if len(args) == 0:
+        sys.exit(0)
+    if args[0] == '--gpu' or args[0] == '-g':
+        if len(args) == 2:
+            sys.exit(0)
+        if len(args) == 1:
+            usage_launch()
+            sys.exit(1)
+        index = int(args[1])
+        args = args[2:]
+        gpu = get_gpu(index)
+    else:
+        gpu = get_discrete_gpu()
+    launch(args, gpu)
+elif command == 'list':
+    _list()

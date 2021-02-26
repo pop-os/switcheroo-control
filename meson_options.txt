@@ -1,0 +1,17 @@
+option('systemdsystemunitdir',
+  type: 'string',
+  value: '',
+  description: 'Directory for systemd service files',
+)
+
+option('hwdbdir',
+  type: 'string',
+  value: '',
+  description: 'Directory for hwdb files',
+)
+
+option('gtk_doc',
+  type: 'boolean',
+  value: false,
+  description: 'Build docs',
+)

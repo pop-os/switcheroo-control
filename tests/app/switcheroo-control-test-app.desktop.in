@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Switcheroo-control test application
+Type=Application
+Exec=@BINDIR@/switcheroo-control-test-app
+Terminal=false
+PrefersNonDefaultGPU=true

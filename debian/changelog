@@ -1,8 +1,8 @@
-switcheroo-control (2.4-3) UNRELEASED; urgency=medium
+switcheroo-control (2.4-3) unstable; urgency=medium
 
   * debian/control.in: umockdev is also needed for the tests
 
- -- Sebastien Bacher <seb128@debian.org>  Mon, 01 Mar 2021 10:33:22 +0100
+ -- Sebastien Bacher <seb128@debian.org>  Mon, 01 Mar 2021 10:37:10 +0100
 
 switcheroo-control (2.4-2) unstable; urgency=medium
 

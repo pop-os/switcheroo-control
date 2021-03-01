@@ -19,6 +19,7 @@ Build-Depends: debhelper-compat (= 12),
                python3-dbus,
                python3-dbusmock,
                udev,
+               umockdev,
 Standards-Version: 4.3.0
 Vcs-Browser: https://salsa.debian.org/gnome-team/switcheroo-control
 Vcs-Git: https://salsa.debian.org/gnome-team/switcheroo-control.git

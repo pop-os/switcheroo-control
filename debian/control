@@ -6,8 +6,8 @@ Source: switcheroo-control
 Section: gnome
 Priority: optional
 Maintainer: Debian GNOME Maintainers <pkg-gnome-maintainers@lists.alioth.debian.org>
-Uploaders: Jeremy Bicha <jbicha@debian.org>
-Build-Depends: debhelper-compat (= 12),
+Uploaders: Jeremy Bicha <jbicha@ubuntu.com>, Sebastien Bacher <seb128@debian.org>
+Build-Depends: debhelper-compat (= 13),
                gir1.2-umockdev-1.0,
                gnome-pkg-tools,
                gtk-doc-tools,

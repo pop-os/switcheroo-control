@@ -12,7 +12,6 @@ override_dh_auto_configure:
 		-Dsystemdsystemunitdir=/lib/systemd/system \
 		-Dhwdbdir=/lib/udev/hwdb.d
 
-override_dh_install:
+execute_before_dh_install:
 	# The developer documentation isn't very useful
 	rm -rf debian/switcheroo-control/usr/share/gtk-doc
-	dh_install

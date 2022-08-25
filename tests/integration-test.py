@@ -59,12 +59,10 @@ class Tests(dbusmock.DBusTestCase):
         if os.access(os.path.join(builddir, 'src', 'switcheroo-control'), os.X_OK):
             cls.daemon_path = os.path.join(builddir, 'src', 'switcheroo-control')
             print('Testing binaries from local build tree (%s)' % cls.daemon_path)
-            cls.local_daemon = True
         elif os.environ.get('UNDER_JHBUILD', False):
             jhbuild_prefix = os.environ['JHBUILD_PREFIX']
             cls.daemon_path = os.path.join(jhbuild_prefix, 'libexec', 'switcheroo-control')
             print('Testing binaries from JHBuild (%s)' % cls.daemon_path)
-            cls.local_daemon = False
         else:
             cls.daemon_path = None
             with open('/usr/lib/systemd/system/switcheroo-control.service') as f:
@@ -73,7 +71,6 @@ class Tests(dbusmock.DBusTestCase):
                         cls.daemon_path = line.split('=', 1)[1].strip()
                         break
             assert cls.daemon_path, 'could not determine daemon path from systemd .service file'
-            cls.local_daemon = False
             print('Testing installed system binary (%s)' % cls.daemon_path)
 
         # fail on CRITICALs on client side
@@ -109,17 +106,17 @@ class Tests(dbusmock.DBusTestCase):
         self.log = None
         self.daemon = None
 
-    def tearDown(self):
-        del self.testbed
-        self.stop_daemon()
-
-        # on failures, print daemon log
-        errors = [x[1] for x in self._outcome.errors if x[1]]
-        if errors and self.log:
+    def run(self, result=None):
+        super(Tests, self).run(result)
+        if result and len(result.errors) + len(result.failures) > 0 and self.log:
             with open(self.log.name) as f:
                 sys.stderr.write('\n-------------- daemon log: ----------------\n')
                 sys.stderr.write(f.read())
                 sys.stderr.write('------------------------------\n')
+
+    def tearDown(self):
+        del self.testbed
+        self.stop_daemon()
 
     #
     # Daemon control and D-BUS I/O
@@ -138,10 +135,7 @@ class Tests(dbusmock.DBusTestCase):
         env['UMOCKDEV_DIR'] = self.testbed.get_root_dir()
         self.log = tempfile.NamedTemporaryFile()
         if os.getenv('VALGRIND') != None:
-            if self.local_daemon:
-                daemon_path = ['libtool', '--mode=execute', 'valgrind', self.daemon_path, '-v']
-            else:
-                daemon_path = ['valgrind', self.daemon_path, '-v']
+            daemon_path = ['valgrind', self.daemon_path, '-v']
         else:
             daemon_path = [self.daemon_path, '-v']
 
@@ -275,6 +269,68 @@ class Tests(dbusmock.DBusTestCase):
                   'ID_PATH_TAG', 'pci-0000_01_00_0' ]
                 )
 
+    def add_nvidia_gpu(self):
+        parent = self.testbed.add_device('pci', 'NVidia VGA controller', None,
+                [ 'boot_vga', '0' ],
+                [ 'DRIVER', 'nvidia',
+                  'PCI_CLASS', '30000',
+                  'PCI_ID', '10DE:1C03',
+                  'PCI_SUBSYS_ID', '1043:85AC'
+                  'PCI_SLOT_NAME', '0000:01:00.0'
+                  'MODALIAS', 'pci:v000010DEd00001C03sv00001043sd000085ACbc03sc00i00',
+                  'ID_PCI_CLASS_FROM_DATABASE', 'Display controller',
+                  'ID_PCI_SUBCLASS_FROM_DATABASE', 'VGA compatible controller',
+                  'ID_PCI_INTERFACE_FROM_DATABASE', 'VGA controller',
+                  'ID_VENDOR_FROM_DATABASE', 'NVIDIA Corporation',
+                  'ID_MODEL_FROM_DATABASE', 'GP106 [GeForce GTX 1060 6GB]',
+                  'FWUPD_GUID', '0x10de:0x85ac' ]
+                )
+
+        self.testbed.set_attribute_link(parent, 'driver', '../../nvidia')
+
+        self.testbed.add_device('drm', 'dri/card1', parent,
+                [],
+                [ 'DEVNAME', '/dev/dri/card1',
+                  'ID_PATH', 'pci-0000:01:00.0',
+                  'ID_PATH_TAG', 'pci-0000_01_00_0' ]
+                )
+
+        self.testbed.add_device('drm', 'dri/renderD129', parent,
+                [],
+                [ 'DEVNAME', '/dev/dri/renderD129',
+                  'ID_PATH', 'pci-0000:01:00.0',
+                  'ID_PATH_TAG', 'pci-0000_01_00_0' ]
+                )
+
+    def add_vc4_gpu(self):
+        parent = self.testbed.add_device('platform', 'VC4 platform device', None,
+                [],
+                [ 'DRIVER', 'vc4-drm',
+                  'OF_NAME', 'gpu',
+                  'OF_FULLNAME', '/soc/gpu',
+                  'OF_COMPATIBLE_0', 'brcm,bcm2835-vc4',
+                  'OF_COMPATIBLE_N', '1',
+                  'MODALIAS', 'of:NgpuT(null)Cbrcm,bcm2835-vc4',
+                  'ID_PATH', 'platform-soc:gpu',
+                  'ID_PATH_TAG', 'platform-soc_gpu' ]
+                )
+
+        self.testbed.set_attribute_link(parent, 'driver', '../../vc4-drm')
+
+        self.testbed.add_device('drm', 'dri/card1', parent,
+                [],
+                [ 'DEVNAME', '/dev/dri/card1',
+                  'ID_PATH', 'platform-soc:gpu',
+                  'ID_PATH_TAG', 'platform-soc_gpu' ]
+                )
+
+        self.testbed.add_device('drm', 'dri/renderD129', parent,
+                [],
+                [ 'DEVNAME', '/dev/dri/renderD129',
+                  'ID_PATH', 'platform-soc:gpu',
+                  'ID_PATH_TAG', 'platform-soc_gpu' ]
+                )
+
     #
     # Actual test cases
     #
@@ -295,6 +351,28 @@ class Tests(dbusmock.DBusTestCase):
         self.assertEqual(len(sc_env), 2)
         self.assertEqual(sc_env[0], 'DRI_PRIME')
         self.assertEqual(sc_env[1], 'pci-0000_00_02_0')
+        self.assertEqual(gpus[0]['Default'], True)
+
+        # process = subprocess.Popen(['gdbus', 'introspect', '--system', '--dest', 'net.hadess.SwitcherooControl', '--object-path', '/net/hadess/SwitcherooControl'])
+        # print (self.get_dbus_property('GPUs'))
+
+        self.stop_daemon()
+
+    def test_rpi(self):
+        self.add_vc4_gpu()
+
+        self.start_daemon()
+        self.assertEqual(self.get_dbus_property('HasDualGpu'), False)
+        self.assertEqual(self.get_dbus_property('NumGPUs'), 1)
+
+        gpus = self.get_dbus_property('GPUs')
+        self.assertEqual(len(gpus), 1)
+        self.assertEqual(gpus[0]['Name'], 'Unknown Graphics Controller')
+        sc_env = gpus[0]['Environment']
+
+        self.assertEqual(len(sc_env), 2)
+        self.assertEqual(sc_env[0], 'DRI_PRIME')
+        self.assertEqual(sc_env[1], 'platform-soc_gpu')
         self.assertEqual(gpus[0]['Default'], True)
 
         # process = subprocess.Popen(['gdbus', 'introspect', '--system', '--dest', 'net.hadess.SwitcherooControl', '--object-path', '/net/hadess/SwitcherooControl'])
@@ -335,7 +413,7 @@ class Tests(dbusmock.DBusTestCase):
 
         self.stop_daemon()
 
-    def test_dual_open_source(self):
+    def test_dual_open_source_with_ttm(self):
         '''dual open source devices'''
 
         self.add_intel_gpu()
@@ -366,6 +444,44 @@ class Tests(dbusmock.DBusTestCase):
 
         self.stop_daemon()
 
+    def test_dual_proprietary(self):
+        '''oss intel + nvidia blob'''
+
+        self.add_intel_gpu()
+        self.add_nvidia_gpu()
+
+        self.start_daemon()
+        self.assertEqual(self.get_dbus_property('HasDualGpu'), True)
+        self.assertEqual(self.get_dbus_property('NumGPUs'), 2)
+
+        gpus = self.get_dbus_property('GPUs')
+        self.assertEqual(len(gpus), 2)
+
+        gpu1 = gpus[0]
+        self.assertEqual(gpu1['Name'], 'NVIDIA Corporation GP106 [GeForce GTX 1060 6GB]')
+        self.assertEqual(gpu1['Default'], False)
+
+        gpu2 = gpus[1]
+        self.assertEqual(gpu2['Name'], 'Intel® UHD Graphics 620 (Kabylake GT2)')
+        self.assertEqual(gpu2['Default'], True)
+
+        sc_env = gpu1['Environment']
+
+        self.assertIn('__GLX_VENDOR_LIBRARY_NAME', sc_env)
+        self.assertIn('__NV_PRIME_RENDER_OFFLOAD', sc_env)
+        self.assertIn('__VK_LAYER_NV_optimus', sc_env)
+
+        def get_sc_env(name):
+            i = sc_env.index(name)
+            return sc_env[i+1]
+
+        self.assertEqual(get_sc_env('__GLX_VENDOR_LIBRARY_NAME'), 'nvidia')
+        self.assertEqual(get_sc_env('__NV_PRIME_RENDER_OFFLOAD'), '1')
+        self.assertEqual(get_sc_env('__VK_LAYER_NV_optimus'), 'NVIDIA_only')
+
+        self.stop_daemon()
+
+
     def test_dual_hotplug(self):
         '''dual open source devices'''
 
@@ -383,6 +499,32 @@ class Tests(dbusmock.DBusTestCase):
         # process = subprocess.Popen(['gdbus', 'introspect', '--system', '--dest', 'net.hadess.SwitcherooControl', '--object-path', '/net/hadess/SwitcherooControl'])
 
         self.stop_daemon()
+
+    def test_cmdline_tool(self):
+        '''test the command-line tool'''
+
+        self.add_intel_gpu()
+        self.add_nouveau_gpu()
+        self.start_daemon()
+
+        builddir = os.getenv('top_builddir', '.')
+        tool_path = os.path.join(builddir, 'src', 'switcherooctl')
+
+        out = subprocess.run([tool_path], capture_output=True)
+        self.assertEqual(out.returncode, 0, "'switcherooctl' call failed")
+        self.assertEqual(out.stdout, b'Device: 0\n  Name:        Intel\xc2\xae UHD Graphics 620 (Kabylake GT2)\n  Default:     yes\n  Environment: DRI_PRIME=pci-0000_00_02_0\n\nDevice: 1\n  Name:        GM108M [GeForce 930MX]\n  Default:     no\n  Environment: DRI_PRIME=pci-0000_01_00_0\n')
+
+        out = subprocess.run([tool_path, 'launch', '--gpu', '0', 'env'], capture_output=True)
+        self.assertEqual(out.returncode, 0, "'switcherooctl launch --gpu 0' failed")
+        assert('DRI_PRIME=pci-0000_00_02_0' in str(out.stdout))
+
+        out = subprocess.run([tool_path, 'launch', '--gpu', '1', 'env'], capture_output=True)
+        self.assertEqual(out.returncode, 0, "'switcherooctl launch --gpu 1' failed")
+        assert('DRI_PRIME=pci-0000_01_00_0' in str(out.stdout))
+
+        out = subprocess.run([tool_path, 'launch', '--gpu=1', 'env'], capture_output=True)
+        self.assertEqual(out.returncode, 0, "'switcherooctl launch --gpu=1' failed")
+        assert('DRI_PRIME=pci-0000_01_00_0' in str(out.stdout))
 
     #
     # Helper methods

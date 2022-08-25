@@ -236,7 +236,7 @@ get_card_env (GUdevClient *client,
 	      GUdevDevice *dev)
 {
 	GPtrArray *array;
-	g_autoptr(GUdevDevice) parent;
+	g_autoptr(GUdevDevice) parent = NULL;
 
 	array = g_ptr_array_new_full (0, g_free);
 
@@ -250,6 +250,10 @@ get_card_env (GUdevClient *client,
 		 * https://download.nvidia.com/XFree86/Linux-x86_64/440.26/README/primerenderoffload.html */
 		g_ptr_array_add (array, g_strdup ("__NV_PRIME_RENDER_OFFLOAD"));
 		g_ptr_array_add (array, g_strdup ("1"));
+
+		/* Make sure Vulkan apps always select Nvidia GPUs */
+		g_ptr_array_add (array, g_strdup ("__VK_LAYER_NV_optimus"));
+		g_ptr_array_add (array, g_strdup ("NVIDIA_only"));
 	} else {
 		char *id;
 
@@ -274,7 +278,7 @@ static char *
 get_card_name (GUdevDevice *d)
 {
 	const char *vendor, *product;
-	g_autoptr(GUdevDevice) parent;
+	g_autoptr(GUdevDevice) parent = NULL;
 	g_autofree char *renderer = NULL;
 
 	parent = g_udev_device_get_parent (d);
@@ -302,7 +306,7 @@ bail:
 static gboolean
 get_card_is_default (GUdevDevice *d)
 {
-	g_autoptr(GUdevDevice) parent;
+	g_autoptr(GUdevDevice) parent = NULL;
 
 	parent = g_udev_device_get_parent (d);
 	return g_udev_device_get_sysfs_attr_as_boolean (parent, "boot_vga");
@@ -397,6 +401,12 @@ get_drm_cards (ControlData *data)
 
 	if (data->add_fake_cards)
 		add_fake_trident_card (cards);
+
+	/* Make sure the only card is the default */
+	if (cards->len == 1) {
+		CardData *card = cards->pdata[0];
+		card->is_default = TRUE;
+	}
 
 	return cards;
 }

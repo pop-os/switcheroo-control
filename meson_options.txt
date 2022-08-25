@@ -15,3 +15,9 @@ option('gtk_doc',
   value: false,
   description: 'Build docs',
 )
+
+option('tests',
+  description: 'Whether to run tests',
+  type: 'boolean',
+  value: false
+)

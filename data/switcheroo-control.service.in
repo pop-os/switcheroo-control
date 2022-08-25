@@ -1,6 +1,6 @@
 [Unit]
 Description=Switcheroo Control Proxy service
-Before=multi-user.target display-manager.target alsa-restore.service alsa-state.service
+Before=multi-user.target display-manager.service alsa-restore.service alsa-state.service
 
 [Service]
 Type=dbus

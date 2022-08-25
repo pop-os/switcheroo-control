@@ -1,8 +1,15 @@
-switcheroo-control (2.6-1) UNRELEASED; urgency=medium
+switcheroo-control (2.6-1) unstable; urgency=medium
 
   * New upstream release
+  * Bump debhelper-compat to 13
+  * Build-Depend on dh-sequence-gnome instead of gnome-pkg-tools
+  * debian/control.in: Build-Depend on python3-gi
+  * debian/control.in: Set Rules-Requires-Root: no
+  * debian/rules: Run tests
+  * debian/rules: Drop no-longer-needed -Wl,--as-needed
+  * Bump Standards-Version to 4.6.1
 
- -- Jeremy Bicha <jbicha@ubuntu.com>  Wed, 24 Aug 2022 23:30:46 -0400
+ -- Jeremy Bicha <jbicha@ubuntu.com>  Wed, 24 Aug 2022 23:34:40 -0400
 
 switcheroo-control (2.4-3) unstable; urgency=medium
 

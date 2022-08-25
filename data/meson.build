@@ -10,7 +10,7 @@ configure_file(
 
 install_data(
   'net.hadess.SwitcherooControl.conf',
-  install_dir: sysconfdir / 'dbus-1/system.d',
+  install_dir: datadir / 'dbus-1/system.d',
 )
 
 install_data(

@@ -1,3 +1,21 @@
+2.6
+---
+
+This release removes the recently added support for setting the GPU for
+Vulkan apps as this broke sandboxed Vulkan apps. The support should come
+back soon when functionality gets added to VulkanLoader.
+
+This release also fixes non-x86 platforms not having a default GPU.
+
+2.5
+---
+
+This release adds support for setting the GPU to use for Vulkan apps, on
+systems with heterogenous GPUs.
+
+This release also fixes the "--gpu" option not working as documented, and
+installs the D-Bus configuration file in the correct location.
+
 2.4
 ---
 

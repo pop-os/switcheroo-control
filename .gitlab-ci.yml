@@ -13,12 +13,13 @@ variables:
                 python3-gobject
                 python3-dbusmock
                 umockdev
+  DIST_DEPENDENCIES: xz
 
 build:
   before_script:
     - dnf update -y --nogpgcheck && dnf install -y --nogpgcheck $DEPENDENCIES
   script:
-    - meson -Dgtk_doc=true _build
+    - meson -Dgtk_doc=true -Dtests=true _build
     - ninja -v -C _build
     - ninja -v -C _build switcheroo-control-doc
     - ninja -v -C _build install
@@ -31,9 +32,9 @@ dist-job:
   only:
     - tags
   before_script:
-    - dnf update -y --nogpgcheck && dnf install -y --nogpgcheck $DEPENDENCIES
+    - dnf update -y --nogpgcheck && dnf install -y --nogpgcheck $DEPENDENCIES $DIST_DEPENDENCIES
   script:
-    - meson --buildtype release -Dgtk_doc=true _build
+    - meson --buildtype release -Dgtk_doc=true -Dtests=true _build
     - cd _build
     - ninja dist
     - ninja switcheroo-control-doc

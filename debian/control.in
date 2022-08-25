@@ -21,7 +21,7 @@ Standards-Version: 4.6.1
 Rules-Requires-Root: no
 Vcs-Browser: https://salsa.debian.org/gnome-team/switcheroo-control
 Vcs-Git: https://salsa.debian.org/gnome-team/switcheroo-control.git
-Homepage: https://github.com/hadess/switcheroo-control
+Homepage: https://gitlab.freedesktop.org/hadess/switcheroo-control
 
 Package: switcheroo-control
 Architecture: linux-any

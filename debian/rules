@@ -9,8 +9,6 @@ export DEB_LDFLAGS_MAINT_APPEND = -Wl,-O1 -Wl,-z,defs
 override_dh_auto_configure:
 	dh_auto_configure -- \
 		-Dgtk_doc=false \
-		-Dsystemdsystemunitdir=/lib/systemd/system \
-		-Dhwdbdir=/lib/udev/hwdb.d \
 		-Dtests=true
 
 execute_before_dh_install:

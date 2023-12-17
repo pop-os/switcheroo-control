@@ -14,6 +14,7 @@ Build-Depends: debhelper-compat (= 13),
                python3-gi,
                python3-dbus,
                python3-dbusmock,
+               systemd-dev,
                udev,
                umockdev,
 Standards-Version: 4.6.2

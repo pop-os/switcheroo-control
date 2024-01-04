@@ -6,7 +6,7 @@ Source: switcheroo-control
 Section: gnome
 Priority: optional
 Maintainer: Debian GNOME Maintainers <pkg-gnome-maintainers@lists.alioth.debian.org>
-Uploaders: Jeremy Bicha <jbicha@ubuntu.com>, Sebastien Bacher <seb128@debian.org>
+Uploaders: Sebastien Bacher <seb128@debian.org>
 Build-Depends: debhelper-compat (= 13),
                dh-sequence-gnome,
                gir1.2-umockdev-1.0,
@@ -21,7 +21,7 @@ Build-Depends: debhelper-compat (= 13),
                python3-dbusmock,
                udev,
                umockdev,
-Standards-Version: 4.6.1
+Standards-Version: 4.6.2
 Rules-Requires-Root: no
 Vcs-Browser: https://salsa.debian.org/gnome-team/switcheroo-control
 Vcs-Git: https://salsa.debian.org/gnome-team/switcheroo-control.git

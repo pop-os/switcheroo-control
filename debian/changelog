@@ -1,3 +1,18 @@
+switcheroo-control (2.6-2) unstable; urgency=medium
+
+  [ Chris Hofstaedtler ]
+  * Let meson use pkg-config to place udev/systemd files (Closes: #1058858)
+
+  [ Jeremy Bícha ]
+  * Stop using debian/control.in and dh-sequence-gnome
+  * Update Homepage
+  * Update standards version to 4.6.2, no changes needed
+
+  [ Debian Janitor ]
+  * Add debian/upstream/metadata
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Thu, 04 Jan 2024 17:13:47 -0500
+
 switcheroo-control (2.6-1) unstable; urgency=medium
 
   * New upstream release

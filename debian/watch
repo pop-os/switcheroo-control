@@ -1,2 +1,4 @@
 version=4
-https://gitlab.freedesktop.org/hadess/switcheroo-control/-/tags?sort=updated_desc .*/@PACKAGE@@ANY_VERSION@@ARCHIVE_EXT@
+opts="searchmode=plain" \
+https://gitlab.freedesktop.org/hadess/@PACKAGE@/tags?sort=updated_desc \
+	-/archive/[\d.]+/@PACKAGE@@ANY_VERSION@@ARCHIVE_EXT@

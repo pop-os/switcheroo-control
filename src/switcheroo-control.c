@@ -424,12 +424,14 @@ static const char * find_internal_display_render(void) {
 				continue;
 			}
 
-			switch (conn->connector_type) {
-				case DRM_MODE_CONNECTOR_LVDS:
-				case DRM_MODE_CONNECTOR_eDP:
-				case DRM_MODE_CONNECTOR_DSI:
-					internal_display_render = render_node;
-					break;
+			if (conn->connection == DRM_MODE_CONNECTED) {
+				switch (conn->connector_type) {
+					case DRM_MODE_CONNECTOR_LVDS:
+					case DRM_MODE_CONNECTOR_eDP:
+					case DRM_MODE_CONNECTOR_DSI:
+						internal_display_render = render_node;
+						break;
+				}
 			}
 
 			drmModeFreeConnector(conn);

@@ -1,3 +1,9 @@
+switcheroo-control (2.6-3pop0) noble; urgency=medium
+
+  * Pop!_OS patches
+
+ -- Jeremy Soller <jeremy@system76.com>  Fri, 19 Sep 2025 08:38:49 -0600
+
 switcheroo-control (2.6-3) unstable; urgency=medium
 
   * Update debian/watch

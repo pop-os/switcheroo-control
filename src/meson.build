@@ -1,4 +1,4 @@
-deps = [glib, gio, gudev]
+deps = [glib, gio, gudev, libdrm]
 
 sources = [
   'info-cleanup.c',

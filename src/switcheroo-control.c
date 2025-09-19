@@ -18,6 +18,8 @@
 #include <stdio.h>
 #include <gio/gio.h>
 #include <gudev/gudev.h>
+#include <xf86drm.h>
+#include <xf86drmMode.h>
 
 #include "info-cleanup.h"
 #include "switcheroo-control-resources.h"
@@ -304,7 +306,7 @@ bail:
 }
 
 static gboolean
-get_card_is_default (GUdevDevice *d)
+get_card_boot_vga (GUdevDevice *d)
 {
 	g_autoptr(GUdevDevice) parent = NULL;
 
@@ -327,7 +329,7 @@ get_card_data (GUdevClient *client,
 	data->dev = g_object_ref (d);
 	data->name = get_card_name (d);
 	data->env = env;
-	data->is_default = get_card_is_default (d);
+	data->is_default = FALSE;
 
 	return data;
 }
@@ -371,6 +373,78 @@ add_fake_trident_card (GPtrArray *cards)
 	g_ptr_array_add (cards, card);
 }
 
+static const char * find_internal_display_render(void) {
+    int max_count = drmGetDevices2(0, NULL, 0);
+	if (max_count <= 0) {
+		perror("drmGetDevices");
+		return NULL;
+	}
+
+	drmDevicePtr *devices = calloc(max_count, sizeof(drmDevicePtr));
+	if (devices == NULL) {
+		perror("calloc");
+		return NULL;
+	}
+
+	int count = drmGetDevices2(0, devices, max_count);
+	if (count < 0) {
+		perror("drmGetDevices");
+		free(devices);
+		return NULL;
+	}
+
+	const char * internal_display_render = NULL;
+	for (int dev_i = 0; dev_i < count; dev_i++) {
+		drmDevicePtr device = devices[dev_i];
+		if (device == NULL) continue;
+
+		if (!(device->available_nodes & (1 << DRM_NODE_PRIMARY))) continue;
+		const char *card_node = device->nodes[DRM_NODE_PRIMARY];
+
+		if (!(device->available_nodes & (1 << DRM_NODE_RENDER))) continue;
+		const char *render_node = device->nodes[DRM_NODE_RENDER];
+
+		int fd = open(card_node, O_RDONLY);
+		if (fd < 0) {
+			perror("open");
+			continue;
+		}
+
+		drmModeRes *res = drmModeGetResources(fd);
+		if (res == NULL) {
+			perror("drmModeGetResources");
+			close(fd);
+			continue;
+		}
+
+		for (int conn_i = 0; conn_i < res->count_connectors; conn_i++) {
+			drmModeConnector *conn = drmModeGetConnectorCurrent(fd, res->connectors[conn_i]);
+			if (conn == NULL) {
+				perror("drmModeGetConnectorCurrent");
+				continue;
+			}
+
+			switch (conn->connector_type) {
+				case DRM_MODE_CONNECTOR_LVDS:
+				case DRM_MODE_CONNECTOR_eDP:
+				case DRM_MODE_CONNECTOR_DSI:
+					internal_display_render = render_node;
+					break;
+			}
+
+			drmModeFreeConnector(conn);
+		}
+
+		drmModeFreeResources(res);
+		close(fd);
+
+		if (internal_display_render != NULL) break;
+	}
+
+	drmFreeDevices(devices, count);
+	return internal_display_render;
+}
+
 static GPtrArray *
 get_drm_cards (ControlData *data)
 {
@@ -402,8 +476,30 @@ get_drm_cards (ControlData *data)
 	if (data->add_fake_cards)
 		add_fake_trident_card (cards);
 
-	/* Make sure the only card is the default */
-	if (cards->len == 1) {
+	/* Choose default based on internal display connector */
+	const char *internal_display_render = find_internal_display_render();
+	if (internal_display_render != NULL) {
+		for (int i = 0; i < cards->len; i++) {
+			CardData *card = cards->pdata[i];
+			const char *path = g_udev_device_get_device_file(card->dev);
+			if (g_str_equal(path, internal_display_render)) {
+				card->is_default = TRUE;
+				return cards;
+			}
+		}
+	}
+
+	/* Choose default based on boot_vga property */
+	for (int i = 0; i < cards->len; i++) {
+		CardData *card = cards->pdata[i];
+		if (get_card_boot_vga(card->dev)) {
+			card->is_default = TRUE;
+			return cards;
+		}
+	}
+
+	/* Select first as default */
+	if (cards->len > 0) {
 		CardData *card = cards->pdata[0];
 		card->is_default = TRUE;
 	}

@@ -20,6 +20,7 @@ gnome = import('gnome')
 glib = dependency('glib-2.0', version: '>= 2.56.0')
 gio = dependency('gio-2.0', version: '>= 2.56.0')
 gudev = dependency('gudev-1.0', version: '>= 232')
+libdrm = dependency('libdrm')
 
 systemd_systemunitdir = get_option('systemdsystemunitdir')
 if systemd_systemunitdir == ''
